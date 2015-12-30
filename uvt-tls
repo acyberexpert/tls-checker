@@ -1,46 +1,65 @@
 #!/bin/bash
 
 cd `dirname $0`
-echo -n 'DATETIME = ' ; date --iso=seconds
 
 MATCHER="<!-- ADD NEW RESULTS HERE -->"
 RESULT="<tr><th>`date +%Y-%m-%d`</th>"
+OUTDIR=$(mktemp -d)
+OUTBODY="${OUTDIR}/body"
 
-echo "Interface details:"
-/sbin/ifconfig eth0 | grep 'inet addr:'
+{ echo -n 'DATETIME = ' ; date --iso=seconds ; }	>  "${OUTBODY}"
+echo							>> "${OUTBODY}"
+echo "Interface details:"				>> "${OUTBODY}"			
+/sbin/ifconfig eth0 | grep 'inet '			>> "${OUTBODY}"
 
-echo "Testing WWW HTTP:"
-wget http://www.example.com/ --tries=2 --connect-timeout=10 -O /dev/null 
-RET=$?
-if [ "X$RET" == "X0" ] ; then
-	echo "Correct"
-	RESULT="${RESULT}<td>Correct</td>"
-else
-	echo "Blocked"
-	RESULT="${RESULT}<td>Blocked</td>"
-fi
+echo							>> "${OUTBODY}"
+echo "Testing WWW:"					>> "${OUTBODY}"
+for REMOTE_HOST in www.example.com ; do
+	OUTPUT="${OUTDIR}/wget_${REMOTE_HOST}.txt"
+	wget "http://${REMOTE_HOST}/" --timeout=10 -O /dev/null > "${OUTPUT}" 2>&1
+	RET=$?
+	if [ "X$RET" == "X0" ] ; then
+		echo "Correct"					>> "${OUTBODY}"
+		RESULT="${RESULT}<td>Correct</td>"
+	else
+		echo "Blocked"					>> "${OUTBODY}"
+		RESULT="${RESULT}<td>Blocked</td>"
+	fi
+done
 
-echo "Testing WWW HTTPS:"
-OUTPUT=`mktemp`
-openssl s_client -connect www.example.com:443 -cert ext-cert.pem -showcerts > ${OUTPUT} <<EOF
+for REMOTE_HOST in www.example.com ; do
+	echo						>> "${OUTBODY}"
+	echo "Testing $REMOTE_HOST:"			>> "${OUTBODY}"
+	OUTPUT="${OUTDIR}/${REMOTE_HOST}.txt"
+	openssl s_client -connect "${REMOTE_HOST}":443 -cert ext-cert.pem -showcerts > "${OUTPUT}" 2>&1 <<EOF
 CONNECT / HTTP/1.1
 User-Agent: $HOSTNAME
-Host: www.example.com
+Host: $REMOTE_HOST
 
 ...
 EOF
-RET=$?
-if [ "X$RET" == "X0" ] ; then
-	echo "Correct"
-	RESULT="${RESULT}<td>Correct</td>"
-else
-	echo "Blocked"
-	RESULT="${RESULT}<td>Blocked</td>"
-fi
+	RET=$?
+	if [ "X$RET" == "X0" ] ; then
+		echo "Correct"				>> "${OUTBODY}"
+		RESULT="${RESULT}<td>Correct</td>"
+	else
+		echo "Blocked"				>> "${OUTBODY}"
+		RESULT="${RESULT}<td>Blocked</td>"
+	fi
 
-echo $OUTPUT
+	# output SSL-Session details:
+	grep -A2 "^SSL-Session:" "${OUTPUT}" \
+		| grep -v SSL-Session			>> "${OUTBODY}"
+	# and what OpenSSL thinks of your certificate:
+	grep "Verify return code:" "${OUTPUT}"		>> "${OUTBODY}"
+	# dump certificate expiry and CN+SAN
+	openssl x509 -in "${OUTPUT}" -noout -text \
+		| grep "\(Validity\|Not Before\|Not After\|Subject:\|DNS:\)"	>> "${OUTBODY}"
+
+done
 RESULT="${RESULT}</tr>"
 
 cat index.html | sed -e "s#${MATCHER}#${MATCHER}${RESULT}#" > index.html.new && cp index.html.new index.html
 
-echo END
+echo END						>> "${OUTBODY}"
+echo "${OUTDIR}"

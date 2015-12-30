@@ -6,4 +6,10 @@ DATE=`date +%Y-%m-%d`
 RECIP="Your.Email@example.com"
 SUBJECT="Automatic tls-checker results from $HOSTNAME $DATE"
 
-./uvt-tls 2>&1 | mutt -s "$SUBJECT" "$RECIP"
+OUTDIR=$(./uvt-tls)
+
+if [ -d "${OUTDIR}" ] ; then
+	cat "${OUTDIR}/body" | mutt -s "$SUBJECT" "$RECIP" -a "${OUTDIR}"/*.txt
+else
+	echo Cannot find output directory: "'${OUTDIR}'"
+fi

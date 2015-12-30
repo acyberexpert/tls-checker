@@ -1,0 +1,13 @@
+#!/bin/bash
+
+for REMOTE_HOST in www.example.com ; do
+	echo $REMOTE_HOST
+	openssl s_client -connect "${REMOTE_HOST}":443 -cert ext-cert.pem -showcerts -ssl3 2>&1 <<EOF | grep -A2 SSL-Session:
+CONNECT / HTTP/1.1
+User-Agent: $HOSTNAME
+Host: $REMOTE_HOST
+  
+...
+EOF
+
+done
