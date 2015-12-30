@@ -1,0 +1,9 @@
+#!/bin/bash
+
+cd `dirname $0`
+
+DATE=`date +%Y-%m-%d`
+RECIP="Your.Email@example.com"
+SUBJECT="Automatic tls-checker results from $HOSTNAME $DATE"
+
+./uvt-tls 2>&1 | mutt -s "$SUBJECT" "$RECIP"

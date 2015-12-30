@@ -1,0 +1,46 @@
+#!/bin/bash
+
+cd `dirname $0`
+echo -n 'DATETIME = ' ; date --iso=seconds
+
+MATCHER="<!-- ADD NEW RESULTS HERE -->"
+RESULT="<tr><th>`date +%Y-%m-%d`</th>"
+
+echo "Interface details:"
+/sbin/ifconfig eth0 | grep 'inet addr:'
+
+echo "Testing WWW HTTP:"
+wget http://www.example.com/ --tries=2 --connect-timeout=10 -O /dev/null 
+RET=$?
+if [ "X$RET" == "X0" ] ; then
+	echo "Correct"
+	RESULT="${RESULT}<td>Correct</td>"
+else
+	echo "Blocked"
+	RESULT="${RESULT}<td>Blocked</td>"
+fi
+
+echo "Testing WWW HTTPS:"
+OUTPUT=`mktemp`
+openssl s_client -connect www.example.com:443 -cert ext-cert.pem -showcerts > ${OUTPUT} <<EOF
+CONNECT / HTTP/1.1
+User-Agent: $HOSTNAME
+Host: www.example.com
+
+...
+EOF
+RET=$?
+if [ "X$RET" == "X0" ] ; then
+	echo "Correct"
+	RESULT="${RESULT}<td>Correct</td>"
+else
+	echo "Blocked"
+	RESULT="${RESULT}<td>Blocked</td>"
+fi
+
+echo $OUTPUT
+RESULT="${RESULT}</tr>"
+
+cat index.html | sed -e "s#${MATCHER}#${MATCHER}${RESULT}#" > index.html.new && cp index.html.new index.html
+
+echo END
