@@ -7,22 +7,23 @@ Dump the files somewhere.
 You can install index.html on your webserver and make a symlink to the directory where the scripts are living.
 
 If you want the pages to look fancy, download the Edward Tufte CSS and install in /images/tufte/ within your webroot:
-[https://github.com/edwardtufte/tufte-css]
+https://github.com/edwardtufte/tufte-css
 
 # Configuration
 Edit any references to example.com to point to your infrastructure:
 
-. In run-uvt, edit the RECIP variable to be your email address.
+- In run-uvt, edit the `RECIP` variable to be your email address.
 
-. In uvt-tls, edit the two hostnames: one in the wget and one in the openssl line.
+- In uvt-tls, edit the two hostnames: one in the first `for` loop and one in the second `for` loop. You can add as many as you like! I really should spin this out to a configuration file.
 
 # Running
 Have a cron job kick off 'run-uvt' at semi-regular intervals, for example, daily is good as that will on Monday catch any changes made during weekend maintenance.
 
 I use:
 
+```
  10 12 * * * $HOME/tls-checker/run-uvt
-
+```
 
 # License
 BSD 2 clause. Refer to [LICENSE] for details.
